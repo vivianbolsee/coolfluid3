@@ -258,10 +258,10 @@ void MainWindow::build_menus()
   action = m_mnu_open_file->addAction("&Remotely", this, SLOT(open_file_remotely()), tr("ctrl+shift+o"));
   m_actions[ACTION_OPEN_REMOTELY] = action;
 
-  action = m_mnu_open_file->addAction("&Locally", this, SLOT(save_file_locally()), tr("ctrl+s"));
+  action = m_mnu_save_file->addAction("&Locally", this, SLOT(save_file_locally()), tr("ctrl+s"));
   m_actions[ACTION_SAVE_LOCALLY] = action;
 
-  action = m_mnu_open_file->addAction("&Remotely", this, SLOT(save_file_remotely()), tr("ctrl+shift+s"));
+  action = m_mnu_save_file->addAction("&Remotely", this, SLOT(save_file_remotely()), tr("ctrl+shift+s"));
   m_actions[ACTION_SAVE_REMOTELY] = action;
 
   m_mnu_file->addMenu(m_mnu_open_file);
@@ -667,7 +667,7 @@ void MainWindow::new_python_script_editor(){
 }
 
 void MainWindow::new_remote_file_copy(){
-  TabBuilder::instance()->addTab(new RemoteFileCopy(this),"File Copy Thing");
+  TabBuilder::instance()->addTab(new RemoteFileCopy(this),"Remote file copy");
 }
 
 PythonCodeEditor* MainWindow::create_new_python_editor(){

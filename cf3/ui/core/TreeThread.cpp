@@ -147,11 +147,13 @@ void TreeThread::new_signal( SignalArgs & args)
     try
     {
       Handle< Component > real_root = root();
-
       if(real_root->uri().path() == URI(receiver).path())
-        root()->call_signal(type, real_frame);
-      else
+        real_root->call_signal(type, real_frame);
+      else{
+        std::cout << "receiver :" << receiver << std::endl;
+        std::cout << real_root->access_component(receiver)->uri().string() << std::endl;
         real_root->access_component(receiver)->call_signal(type, real_frame);
+      }
     }
     catch(cf3::common::Exception & cfe)
     {

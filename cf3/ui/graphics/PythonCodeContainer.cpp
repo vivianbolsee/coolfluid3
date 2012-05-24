@@ -79,21 +79,26 @@ PythonCodeContainer::PythonCodeContainer(QWidget *parent) :
   tool_bar->setMovable(false);
   tool_bar->setFloatable(false);
   tool_bar->setIconSize(QSize(16,16));
-  //tool_bar->setLayout(new QHBoxLayout());
-  //tool_bar->layout()->setContentsMargins(0,0,0,0);
-  //tool_bar->setFixedHeight(42);
-  QHBoxLayout *layout=new QHBoxLayout;
+  QHBoxLayout *layout=new QHBoxLayout(this);
   layout->setContentsMargins(0,0,0,0);
-  //tool_bar->setFixedHeight(tool_bar->height());
-  layout->addSpacerItem(new QSpacerItem(border_width,0));
-  layout->addWidget(tool_bar);
-  layout->setAlignment(tool_bar,Qt::AlignTop);
-  //layout->setAlignment(tool_bar,Qt::AlignTop);
+  layout->addSpacing(border_width);
+  QVBoxLayout *line_layout=new QVBoxLayout(this);
+  line_layout->setContentsMargins(0,0,0,0);
+  line_layout->setSpacing(0);
+  line_layout->addWidget(tool_bar);
+  QFrame* line = new QFrame(this);
+  line->setFrameShape(QFrame::HLine);
+  line->setFrameShadow(QFrame::Sunken);
+  line->setMaximumHeight(2);
+  line->setMinimumHeight(2);
+  line_layout->addWidget(line);
+  layout->addLayout(line_layout);
+  layout->setAlignment(line_layout,Qt::AlignTop);
   setLayout(layout);
-  setViewportMargins(border_width,tool_bar->height(),0,0);
+  setViewportMargins(border_width,tool_bar->height()+line->height(),0,0);
   setTabStopWidth(fontMetrics().width(QLatin1Char(' '))*2);
   offset_border.setX(border_width);
-  offset_border.setY(tool_bar->height());
+  offset_border.setY(tool_bar->height()+line->height());
   //this border is used to display line number or the prompt
   doc_timer.setInterval(400);
   doc_timer.setSingleShot(true);
@@ -124,10 +129,14 @@ void PythonCodeContainer::repaint_border_area(QPaintEvent *event){
   painter.fillRect(event->rect(), Qt::lightGray);
   QTextBlock block = firstVisibleBlock();
   int block_number = block.blockNumber();
-  int vertical_displace=tool_bar->height();
+  int vertical_displace=offset_border.y();
   int top = (int) blockBoundingGeometry(block).translated(contentOffset()).top()+vertical_displace;
   int bottom = top + (int) blockBoundingRect(block).height();
-  int debug_arrow_block=python_console->get_debug_arrow_block();
+  int debug_arrow_block;
+  if (this==python_console)
+    debug_arrow_block=python_console->get_debug_arrow_block();
+  else
+    debug_arrow_block=-1;
   painter.setPen(Qt::black);
   while (block.isValid() && top <= event->rect().bottom()) {
     if (block.isVisible() && bottom >= event->rect().top()) {
@@ -262,8 +271,11 @@ void PythonCodeContainer::keyPressEvent(QKeyEvent *e){
         key_press_event(e);
       }
     }
-  }else{//allow copy in uneditable zones
-    if (e->modifiers() == Qt::ControlModifier && e->key() == Qt::Key_C)
+  }else{//allow copy and selection in uneditable zones
+    if ((e->modifiers() == Qt::ControlModifier && e->text().size() == 0)
+        || (e->modifiers() == Qt::ControlModifier
+            && (e->key() == Qt::Key_A || e->key() == Qt::Key_C)) //autorized actions
+        || (e->modifiers() == Qt::ShiftModifier && e->text().size() == 0))
       QPlainTextEdit::keyPressEvent(e);
     else
       key_press_event(e);

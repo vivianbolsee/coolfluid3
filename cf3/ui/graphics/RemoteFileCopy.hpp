@@ -12,12 +12,13 @@
 #include <QList>
 #include "ui/graphics/LibGraphics.hpp"
 #include <QListView>
-#include <QSplitter>
 #include <QDropEvent>
 #include <boost/shared_ptr.hpp>
 #include <QDebug>
 
 class QFileSystemModel;
+class QLabel;
+class QProgressBar;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,8 +31,9 @@ namespace graphics {
 
 class DraggableListWidget;
 class FileFilter;
+class CustomProgressBar;
 
-class Graphics_API RemoteFileCopy : public QSplitter{
+class Graphics_API RemoteFileCopy : public QWidget{
   Q_OBJECT
 public:
   RemoteFileCopy(QWidget *parent);
@@ -41,14 +43,17 @@ private slots:
   void to_remote_copy_requested(QModelIndex item, QModelIndexList copy_items);
   void local_item_double_clicked(QModelIndex item);
   void remote_item_double_clicked(QModelIndex item);
-  void remote_dir_changed(const QString & dir);
-  void copy_finished();
+  void copy_finished(int percent,QString current_file);
 private:
   boost::shared_ptr<core::NRemoteFSBrowser> remote_files;
   FileFilter* filter_remote_model;//for icons
   QFileSystemModel* local_files;
   DraggableListWidget* remote_list_widget;
   DraggableListWidget* local_list_widget;
+  QLabel* local_current_dir;
+  QLabel* remote_current_dir;
+  QProgressBar* percent_copied;
+  QLabel* current_file_copied;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

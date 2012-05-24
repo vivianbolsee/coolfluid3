@@ -998,7 +998,7 @@ void def_common_pure_matrix(class_<TMATRIX, boost::noncopyable, boost::shared_pt
       .def("rightCols", matrix_right_cols<rows,cols>, "rightCols(col_number) give the submatrix of size (parent.row_number,col_number) filled with the value of the parent taken from the right.")
       .def("setZero", dynamic_matrix_set_zero<rows,cols>, "setZero() fill the matrix with zeros.")
       .def("setOnes", dynamic_matrix_set_ones<rows,cols>, "setOnes() fill the matrix with ones.")
-      .def("setConstant", dynamic_matrix_set_constant<rows,cols>, "setConstan() fill the matrix with the constant give in argument.")
+      .def("setConstant", dynamic_matrix_set_constant<rows,cols>, "setConstant() fill the matrix with the constant give in argument.")
       .def("setRandom", dynamic_matrix_set_random<rows,cols>, "setRandom() fill the matrix with random numbers.")
       .def("rows", matrix_rows<rows,cols>, "rows() give the number of rows of the matrix.")
       .def("cols", matrix_cols<rows,cols>, "cols() give the number of columns of the matrix.")
@@ -1025,11 +1025,7 @@ void def_common_pure_matrix(class_<TMATRIX, boost::noncopyable, boost::shared_pt
   */
 template<int rows, int cols>
 void def_common_matrix(class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMATRIX > >*matrix_class){
-  matrix_class->def("__mul__",matrix_scalar_mul<rows,cols>)
-    .def("__div__",matrix_scalar_div<rows,cols>)
-    .def("__imul__",matrix_scalar_imul<rows,cols>)
-    .def("__idiv__",matrix_scalar_idiv<rows,cols>)
-    .def("norm", vector_norm<rows,cols>, "norm() return the squareroot of the sum of the square of all components.")
+  matrix_class->def("norm", vector_norm<rows,cols>, "norm() return the squareroot of the sum of the square of all components.")
     .def("squaredNorm", vector_squared_norm<rows,cols>, "squaredNorm() return the sum of the square of all components.")
     .def("normalized", vector_normalized<rows,cols>, "normalized() return a same sized object where of the components are divided by the norm.")
     .def("normalize", vector_normalize<rows,cols>, "nromalize() divide all the components with the norm.")
@@ -1088,7 +1084,7 @@ void def_common_matrix(class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMA
 /** @brief wrap the Eigen::Matrix<n,1>
   */
 template<int rows, int cols>
-void def_static_vector(const char* name,const char* doc){
+class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMATRIX > >* def_static_vector(const char* name,const char* doc){
   class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMATRIX > >*matrix_class = new class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMATRIX > >(name,doc);
   matrix_class->def("__init__",make_constructor(&realvector_init_static_tab<rows,cols>))
       .def("__init__",make_constructor(&realmatrix_init_static_default<rows,cols>))
@@ -1101,6 +1097,7 @@ void def_static_vector(const char* name,const char* doc){
   def_common_vector<rows,cols>(matrix_class);
   def_common_matrix<rows,cols>(matrix_class);
   def_common_static<rows,cols>(matrix_class);
+  return matrix_class;
 }
 
 /** @brief wrap the Eigen::Matrix<1,1> (they don't implement dot and cross operator)
@@ -1108,8 +1105,7 @@ void def_static_vector(const char* name,const char* doc){
 template<int rows, int cols>
 void def_static_vector1(const char* name,const char* doc){
   class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMATRIX > >*matrix_class = new class_<TMATRIX, boost::noncopyable, boost::shared_ptr<TMATRIX > >(name,doc);
-  matrix_class->def("__init__",make_constructor(&realvector_init_static_tab<rows,cols>))
-      .def("__init__",make_constructor(&realmatrix_init_static_default<rows,cols>))
+  matrix_class->def("__init__",make_constructor(&realmatrix_init_static_default<rows,cols>))
       .def("__init__",make_constructor(&realmatrix_init_copy_static<rows,cols,Eigen::Dynamic,cols>))
       .def("__init__",make_constructor(&realvector_init_copy_static_dyn<rows,cols>))
       .def("__mul__", matrix_by_matrix_dyn<rows,cols,Eigen::Dynamic,Eigen::Dynamic>)
@@ -1265,7 +1261,7 @@ void def_matrix_types(){
                          "RealVector3(value) create a RealVector3, all components are initialized with the specified value.\n"
                          "You can acces to a component of the vector with the [] operator called with index of the component ex: vec[1] to get the second component of the vector.\n"
                          "str(vec) return the string representation of the vector, you can also directly call 'print vec' to display the vector\n"
-                         "len(vec) return the size of the vector.");
+                         "len(vec) return the size of the vector.")->def("cross", vector_cross<3,1>);
   def_static_vector<4,1>("RealVector4","Wrap of the Eigen::Matrix<4,1> classe.\n"
                          "RealVector4(tab) initialize the vector with the values contains in tab (must be a one dimension array) ex : RealVector4([1,2,3,4])\n"
                          "RealVector4() create a RealVector4, all components are initialized with zeros.\n"

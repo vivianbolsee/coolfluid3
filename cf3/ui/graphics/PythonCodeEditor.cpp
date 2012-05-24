@@ -37,9 +37,6 @@ PythonCodeEditor::PythonCodeEditor(QWidget *parent) :
   connect(tool_bar->addAction(QIcon(":/Icons/action_open.png"),"Open"),SIGNAL(triggered()),this,SLOT(open()));
   connect(tool_bar->addAction(QIcon(":/Icons/action_save.png"),"Save"),SIGNAL(triggered()),this,SLOT(save()));
   connect(document(),SIGNAL(contentsChange(int,int,int)),this,SLOT(contents_change(int,int,int)));
-  setViewportMargins(border_width,tool_bar->height(),0,0);
-  offset_border.setX(border_width);
-  offset_border.setY(tool_bar->height());
   document()->findBlockByNumber(0).setUserState(LINE_NUMBER);
 }
 

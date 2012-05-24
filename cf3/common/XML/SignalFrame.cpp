@@ -497,7 +497,7 @@ std::string SignalFrame::to_script( int indentation ) const
 
 ////////////////////////////////////////////////////////////////////////////
 
-std::string SignalFrame::to_python_script( int indentation ) const //add uri parameter with the sender cpath
+std::string SignalFrame::to_python_script( int indentation ) const
 {
   std::string str="Root";
   std::string target = node.attribute_value("target");

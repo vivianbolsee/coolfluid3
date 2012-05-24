@@ -122,7 +122,7 @@ public:
 
   // @} END Signals
 
-  void copy_request (std::vector<std::string> & parameters);
+  void copy_request (std::vector<std::string> & parameters, std::vector<std::string> & file_names);
 
   void reply_copy_request ( common::SignalArgs & node );
 
@@ -136,7 +136,7 @@ signals:
 
   void favorites_changed( const QStringList & list );
 
-  void copy_finished ();
+  void copy_finished (int percent, QString current_file);
 
 private: // functions
 

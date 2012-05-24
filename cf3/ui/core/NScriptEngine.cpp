@@ -18,7 +18,6 @@
 
 #include "ui/core/TreeThread.hpp"
 #include "ui/core/ThreadManager.hpp"
-#include "common/Signal.hpp"
 
 #include "common/XML/Protocol.hpp"
 #include "common/XML/SignalOptions.hpp"
@@ -36,6 +35,7 @@ namespace core {
 
 NScriptEngine::NScriptEngine():CNode(CLIENT_SCRIPT_ENGINE,"NScriptEngine",CNode::LOCAL_NODE) {
   connected=false;
+  sending_statement=false;
   regist_signal("documentation")
       .hidden(true)
       .pretty_name("documentation signal")
@@ -109,12 +109,19 @@ void NScriptEngine::signal_debug_trace(common::SignalArgs & node){
 void NScriptEngine::signal_execute_script_reply(common::SignalArgs & node){
   SignalOptions options(node);
   emit change_fragment_request(options.value<int>("fragment"),options.value<int>("new_fragment"));
+  if (pending_frames.size()){
+    SignalFrame f=pending_frames.dequeue();
+    NetworkQueue::global()->send( f, NetworkQueue::IMMEDIATE );
+  }else{
+    sending_statement=false;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
 void NScriptEngine::execute_line( const QString & line , int fragment_number, QVector<int> break_points){
   if (connected){
+
     const common::URI script_engine_path("//Tools/Python/ScriptEngine", common::URI::Scheme::CPATH);
     SignalOptions options;
     QString repl=QString(line);
@@ -124,7 +131,12 @@ void NScriptEngine::execute_line( const QString & line , int fragment_number, QV
     options.add_option("fragment",fragment_number);
     options.add_option("breakpoints",break_points.toStdVector());
     SignalFrame frame = options.create_frame("execute_script", uri(), script_engine_path);
-    NetworkQueue::global()->send( frame, NetworkQueue::IMMEDIATE );
+    if (!sending_statement){
+      NetworkQueue::global()->send( frame, NetworkQueue::IMMEDIATE );
+    }else{
+      sending_statement=true;
+      pending_frames.enqueue(frame);
+    }
   }
 }
 

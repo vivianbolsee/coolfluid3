@@ -45,6 +45,7 @@
 
 #include "common/XML/Protocol.hpp"
 #include "common/XML/SignalOptions.hpp"
+#include "common/XML/FileOperations.hpp"
 
 #include "ui/uicommon/ComponentNames.hpp"
 
@@ -447,11 +448,74 @@ void CCore::send_ack( const std::string & clientid,
 
 /////////////////////////////////////////////////////////////////////////////
 
+void CCore::signal_copy_request( common::SignalArgs & node ){
+  SignalOptions options( node );
+  std::vector<std::string> commands = options.array<std::string>("parameters");
+  std::vector<std::string> file_names = options.array<std::string>("file_names");
+  int file_number = file_names.size();
+  int file_copied = 0;
+  std::string receiver=node.node.attribute_value("sender");
+  std::string sender=node.node.attribute_value("receiver");
+  std::string clientid=node.node.attribute_value("clientid");
+  std::vector<std::string>::iterator it = commands.begin();
+  std::vector<std::string>::iterator end = commands.end();
+  char* args[8];
+  args[0]=new char[13];
+  strcpy(args[0],"/usr/bin/scp");
+  args[1]=new char[3];
+  strcpy(args[1],"-o");
+  args[2]=new char[14];
+  strcpy(args[2],"BatchMode=yes");
+  for (int i=3;it<end;it++,i++){
+    int str_size=(*it).size();
+    if (str_size > 1){
+      args[i]=new char[str_size+1];
+      strcpy(args[i],(*it).c_str());
+    }else{
+      args[i]=NULL;
+      //not portable
+      SignalFrame reply("copy_request",URI(sender),URI(receiver));
+      SignalOptions options(reply);
+      options.add_option<int>("percent", (int)(((float)file_copied/(float)file_number)*100.f));
+      options.add_option<std::string>("current_file",file_names.at(file_copied));
+      options.flush();
+      m_comm_server->send_frame_to_client(reply, clientid);
+      pid_t pid=fork();
+      if (pid == 0){
+        //not portable
+        execv(args[0],args);
+      }
+      int status;
+      waitpid(pid,&status,0);
+      if (status != 0){
+        std::cout << "error on file :" << file_names.at(file_copied) << std::endl;
+      }
+      file_copied++;
+      for (int j=3;j<i;j++){
+        delete[] args[j];
+      }
+      i=2;
+    }
+  }
+  SignalFrame reply("copy_request",URI(sender),URI(receiver));
+  SignalOptions options_reply(reply);
+  options_reply.add_option<int>("percent", 100);//copy finished
+  options_reply.flush();
+  m_comm_server->send_frame_to_client(reply, clientid);
+  delete[] args[0];
+  delete[] args[1];
+  delete[] args[2];
+}
+
+
+/* too complicated
 std::queue< pid_t > pid_queue;
 boost::mutex* pid_queue_mutex;
 boost::condition_variable* pid_queue_condition;
 bool pid_still_coming;
 
+// this thread wait that all the pid contains in pid_queue are finished
+// then it send the reply of the copy request
 void wait_all_pids(common::SignalArgs node){
   boost::unique_lock<boost::mutex> locker(*pid_queue_mutex,boost::defer_lock_t());
   int status;
@@ -460,8 +524,9 @@ void wait_all_pids(common::SignalArgs node){
     if (pid_queue.size()){
       pid_t pid=pid_queue.front();
           pid_queue.pop();
-      std::cout << "waiting for pid :" << pid << std::endl;
+      //std::cout << "waiting for pid :" << pid << std::endl;
       locker.unlock();
+      //not portable
       waitpid(pid,&status,0);
     }else{
       pid_queue_condition->wait(locker);
@@ -470,19 +535,18 @@ void wait_all_pids(common::SignalArgs node){
   }
   delete pid_queue_mutex;
   delete pid_queue_condition;
-  std::cout << "wait finished" << std::endl;
+  //std::cout << "wait finished" << std::endl;
   node.create_reply();
 }
-
 
 void CCore::signal_copy_request( common::SignalArgs & node ){
   pid_queue_mutex=new boost::mutex();
   pid_queue_condition=new boost::condition_variable();
+  pid_still_coming=true;
   boost::thread notifier_thread(wait_all_pids, node);
   std::vector<std::string> commands = node.get_array<std::string>("parameters");
   std::vector<std::string>::iterator it = commands.begin();
   std::vector<std::string>::iterator end = commands.end();
-  pid_still_coming=true;
   char* args[6];
   args[0]=new char[13];
   strcpy(args[0],"/usr/bin/scp");
@@ -493,18 +557,15 @@ void CCore::signal_copy_request( common::SignalArgs & node ){
       strcpy(args[i],(*it).c_str());
     }else{
       args[i]=NULL;
-      /*for (int j=0;j<i;j++){
-        std::cout << args[j];
-      }
-      std::cout << std::endl;*/
       //not portable
       pid_t pid=fork();
       if (pid == 0){
+        //not portable
         execv(args[0],args);
       }else{
         boost::lock_guard<boost::mutex> guard(*pid_queue_mutex);
         pid_queue.push(pid);
-        std::cout << "spawning pid :" << pid << std::endl;
+        //std::cout << "spawning pid :" << pid << std::endl;
         pid_queue_condition->notify_one();
       }
       for (int j=1;j<i;j++){
@@ -515,7 +576,7 @@ void CCore::signal_copy_request( common::SignalArgs & node ){
   }
   delete[] args[0];
   pid_still_coming=false;
-}
+}*/
 
 /////////////////////////////////////////////////////////////////////////////
 

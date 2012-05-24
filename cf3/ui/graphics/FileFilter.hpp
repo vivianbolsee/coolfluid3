@@ -34,6 +34,12 @@ protected:
 
   QMimeData * mimeData(const QModelIndexList &indexes) const;
 
+  bool lessThan(const QModelIndex &left, const QModelIndex &right) const;
+
+private slots:
+
+  void resort(QString path);
+
 private: // data
 
   core::NRemoteFSBrowser * m_model;

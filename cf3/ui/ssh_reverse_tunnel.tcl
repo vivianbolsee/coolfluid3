@@ -20,8 +20,10 @@ proc ssh1 {gateway_user gateway_host} {
     }
     "(yes/no)? " {
       send -- "yes\r"
-      -re "^.*($gateway_user).*\\$" {
-        return 1
+      expect {
+        -re "^.*($gateway_user).*\\$" {
+          return 1
+        }
       }
       "assword: " {
         send_user "#$gateway_host#$gateway_user#\n"
@@ -49,8 +51,10 @@ proc ssh2 {distant_user distant_host} {
     }
     "(yes/no)? " {
       send -- "yes\r"
-      -re "^.*($distant_user).*\\$" {
-        return 1
+        expect {
+        -re "^.*($distant_user).*\\$" {
+          return 1
+        }
       }
       "assword: " {
         send_user "#$distant_host#$distant_user#\n"
@@ -78,8 +82,10 @@ proc ssh3 {local_user local_host local_port distant_port} {
     }
     "(yes/no)? " {
       send -- "yes\r"
-      -re "^.*($local_user).*\\$" {
-        return 1
+      expect{
+        -re "^.*($local_user).*\\$" {
+          return 1
+        }
       }
       "assword: " {
         send_user "\n#$local_host#$local_user#\n"

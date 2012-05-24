@@ -12,7 +12,9 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "ui/core/CNode.hpp"
-#include "QVector"
+#include <QVector>
+#include <QQueue>
+#include "common/Signal.hpp"
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -112,8 +114,10 @@ protected:
   virtual void disable_local_signals(QMap<QString, bool> & localSignals) const {}
 private:
   QStringList std_vector_to_QStringList(std::vector<std::string> vector);
+  QQueue<SignalFrame> pending_frames;
   bool connected;
   int vector_int_type;
+  bool sending_statement;
 }; // class NScriptEngine
 
 ///////////////////////////////////////////////////////////////////////////

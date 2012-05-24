@@ -62,8 +62,11 @@ PythonConsole::PythonConsole(QWidget *parent,MainWindow* main_window) :
   QAction* history_to_text_editor=new QAction(QIcon(":/Icons/action_new_script_from_history")
                                               ,"Create script from history",this);
   tool_bar->addAction(history_to_text_editor);
+  break_action->setEnabled(false);
+  stop_continue->setEnabled(false);
 
   debug_arrow=-1;
+  fragment_generator=0;
   //history list
   history_list_widget=new CustomListWidget(this);
   history_list_widget->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -81,9 +84,6 @@ PythonConsole::PythonConsole(QWidget *parent,MainWindow* main_window) :
   connect(core::NScriptEngine::global().get(),SIGNAL(debug_trace_received(int,int)),this,SLOT(display_debug_trace(int,int)));
   connect(core::NScriptEngine::global().get(),SIGNAL(change_fragment_request(int,int)),this,SLOT(change_code_fragment(int,int)));
   connect(this,SIGNAL(cursorPositionChanged()),this,SLOT(cursor_position_changed()));
-  setViewportMargins(border_width,tool_bar->height(),0,0);
-  offset_border.setX(border_width);
-  offset_border.setY(tool_bar->height());
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -155,13 +155,9 @@ void PythonConsole::display_debug_trace(int fragment,int line){
     int fragment_bloc_number=fragment_container[fragment];
     reset_debug_trace();
     debug_arrow=fragment_bloc_number+(line-1);
+
     QTextBlock block=document()->findBlockByNumber(debug_arrow);
-    QTextCursor prev_cursor=textCursor();
-    QTextCursor cursor(document());
-    cursor.setPosition(block.position());
-    setTextCursor(cursor);
-    centerCursor();
-    setTextCursor(prev_cursor);
+    ensure_block_visible(block);
     document()->markContentsDirty(block.position(),1);
   }
 }
@@ -202,7 +198,7 @@ void PythonConsole::send_toggle_break_point(int fragment_block,int line_number){
 
 void PythonConsole::key_press_event(QKeyEvent *e){
   QTextCursor c=textCursor();
-  if (e->text().length() > 0 && !editable_zone(c)){
+  if (!editable_zone(c)){
     c.movePosition(QTextCursor::End);
     setTextCursor(c);
   }
@@ -238,6 +234,7 @@ void PythonConsole::key_press_event(QKeyEvent *e){
       select_input(c);
       c.removeSelectedText();
       c.insertText(history.at(history_index));
+      ensure_block_visible(c.block());
       //centerCursor();
       fix_prompt();
     }else{
@@ -257,6 +254,7 @@ void PythonConsole::key_press_event(QKeyEvent *e){
           c.insertText(history.at(history_index));
         }
         setTextCursor(c);
+        ensure_block_visible(c.block());
         fix_prompt();
       }
     }else{
@@ -370,14 +368,17 @@ void PythonConsole::execute_input(QTextCursor &c){
     command.chop(1);
   if (command.size()){
     register_fragment(command,input_block,temporary_break_points);
-    history.append(command);
-    add_history_draggable_item(command);
-    history_index=history.size();
+    if (!history.size() || command != history.last()){
+      history.append(command);
+      add_history_draggable_item(command);
+      history_index=history.size();
+    }
     c.movePosition(QTextCursor::End);
     input_block=c.blockNumber();
     input_start_in_text=c.position();
     //centerCursor();
     document()->lastBlock().setUserState(PythonCodeContainer::PROMPT_1);
+    ensure_block_visible(document()->lastBlock());
     if (command_stack.size())
       auto_execution_timer.start();//to avoid cross call with stream_next_command
   }
@@ -395,13 +396,14 @@ void PythonConsole::execute_code(QString code,bool immediate,QVector<int> break_
   QVector<int> current_break;
   int line_number=0;
   int block_number=0;
+  int skipped_lines=0;
   int ind=-1;
 
   bool multi_line=false;
 
   foreach (line,code.split('\n')){
     if (ind=break_lines.indexOf(line_number) > -1){
-      current_break.push_back(line_number-block_number);
+      current_break.push_back(line_number-block_number-skipped_lines);
     }
     if (multi_line){
       int indent=0;
@@ -428,7 +430,10 @@ void PythonConsole::execute_code(QString code,bool immediate,QVector<int> break_
         if (!line.contains(empty_line)){
           command_stack.enqueue(python_command(line,immediate,current_break));
           block_number=line_number;
+          skipped_lines=1;
           current_break.clear();
+        }else{
+          skipped_lines++;
         }
       }
     }
@@ -464,6 +469,7 @@ void PythonConsole::stream_next_command(){
   }
   setTextCursor(c);
   //centerCursor();
+  ensure_block_visible(document()->lastBlock());
   fix_prompt();
   if (current_command.imediate){
     execute_input(c);
@@ -509,6 +515,7 @@ void PythonConsole::insert_output(QString output, int fragment){
   QTextCursor insert_cursor(cursor);
   int pos_c=cursor.position();
   cursor.insertText(output);
+  ensure_block_visible(cursor.block());
   cursor.movePosition(QTextCursor::Right);
   input_start_in_text+=output.size()+1;
   insert_cursor.setPosition(pos_c);
@@ -546,8 +553,12 @@ void PythonConsole::insert_output(QString output, int fragment){
       }
       ++itt_fragment;
     }
+    int insert_line=insert_cursor.blockNumber();
+    for (int i=0;i<break_points.size();i++){
+      if (break_points[i] >= insert_line)
+        break_points[i]+=block_diff;
+    }
   }
-  ensureCursorVisible();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -588,6 +599,7 @@ void PythonConsole::append_false_code(QString code){
   c.movePosition(QTextCursor::Left);
   c.insertText(first_line);
   c.block().setUserState(PROMPT_1);
+  ensure_block_visible(c.block());
   input_start_in_text+=first_line.size()+1;
   input_block+=1;
   history.append(first_line);
@@ -676,7 +688,9 @@ void PythonConsole::scope_double_click(const QModelIndex & index){
 ////////////////////////////////////////////////////////////////////////////
 
 void PythonConsole::add_history_draggable_item(const QString & text){
-  QListWidgetItem* item=new QListWidgetItem(text,history_list_widget,history_list_widget->count());
+  QString modified_text(text);
+  modified_text.replace("\t","    ");//tabulation where way too large
+  QListWidgetItem* item=new QListWidgetItem(modified_text,history_list_widget,history_list_widget->count());
   item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled | Qt::ItemIsEnabled);
   history_list_widget->addItem(item);
 }
@@ -691,6 +705,14 @@ void PythonConsole::history_double_click(const QModelIndex & index){
 
 const QListWidget* PythonConsole::get_history_list_widget(){
   return history_list_widget;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+void PythonConsole::ensure_block_visible(QTextBlock block){
+  QTextCursor cursor(block);
+  setTextCursor(cursor);
+  ensureCursorVisible();
 }
 
 ////////////////////////////////////////////////////////////////////////////

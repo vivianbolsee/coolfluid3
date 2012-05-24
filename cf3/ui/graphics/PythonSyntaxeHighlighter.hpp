@@ -37,11 +37,13 @@ public:
 protected:
   void highlightBlock(const QString &text);
 private:
+  /// @brief store an highlighting rule, the text format will be aplied where the pattern is found
   struct HighlightingRule
   {
       QRegExp pattern;
       QTextCharFormat *format;
   };
+  /// @brief
   static int instance_count;
   static QVector<HighlightingRule> *highlighting_rules;
   static QTextCharFormat *comment_format;
@@ -56,6 +58,8 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/// @brief store the compilation error, when the user put his mouse over a line marqued with an error
+/// (red line) the error is displayed
 class TextBlockErrorData
   : public QTextBlockUserData {
 public:

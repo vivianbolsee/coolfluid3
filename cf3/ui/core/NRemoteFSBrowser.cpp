@@ -19,6 +19,7 @@
 
 #include "common/XML/FileOperations.hpp"
 
+#include <iostream>
 
 using namespace cf3::common;
 using namespace cf3::common::XML;
@@ -159,19 +160,26 @@ void NRemoteFSBrowser::reply_list_favorites ( SignalArgs &node )
 
 /////////////////////////////////////////////////////////////////////////////
 
-void NRemoteFSBrowser::copy_request ( std::vector<std::string> & parameters ){
+void NRemoteFSBrowser::copy_request ( std::vector<std::string> & parameters , std::vector<std::string> & file_names){
 
   SignalFrame frame("copy_request", uri(), SERVER_CORE_PATH);
-  frame.set_array<std::string>("parameters", parameters, ";");
-  frame.options().flush();
+  SignalOptions options( frame );
+  options.add_option("parameters",parameters);
+  options.add_option("file_names", file_names);
+  options.flush();
   NetworkQueue::global()->send( frame, NetworkQueue::IMMEDIATE );
 }
 
 /////////////////////////////////////////////////////////////////////////////
 
 void NRemoteFSBrowser::reply_copy_request ( common::SignalArgs & node ){
-
-  emit copy_finished();
+  SignalOptions options( node );
+  if (options.check("percent")){
+    if (options.check("current_file"))
+      emit copy_finished(options.value<int>("percent"),QString(options.value<std::string>("current_file").c_str()));
+    else
+      emit copy_finished(options.value<int>("percent"),"");
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////

@@ -17,7 +17,6 @@
 #include "ui/graphics/PythonCodeContainer.hpp"
 
 #include "ui/graphics/LibGraphics.hpp"
-#include <iostream>
 
 class QToolBar;
 class QStringListModel;
@@ -143,6 +142,7 @@ private:
   /// @brief Send the python code fragment to the script engine
   void register_fragment(QString code,int block_number,QVector<int> break_point);
 
+  void ensure_block_visible(QTextBlock block);
   /// @brief used to store the pending command on the command stack
   class python_command{
   public:

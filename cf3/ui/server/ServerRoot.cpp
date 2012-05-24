@@ -12,6 +12,7 @@
 #include "common/Core.hpp"
 #include "common/PE/Manager.hpp"
 #include "common/XML/Protocol.hpp"
+#include "common/XML/FileOperations.hpp"
 
 #include "ui/uicommon/ComponentNames.hpp"
 
@@ -88,7 +89,7 @@ void ServerRoot::process_signal( const std::string & target,
 
       SignalFrame reply = signal.get_reply();
 
-      if( reply.node.is_valid() )
+      if( signal.has_reply() )
       {
         m_core->send_signal( signal );
       }

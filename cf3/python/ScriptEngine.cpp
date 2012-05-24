@@ -203,7 +203,6 @@ ScriptEngine::~ScriptEngine()
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 int ScriptEngine::execute_script(std::string script,int code_fragment){
-  boost::lock_guard<boost::mutex> lock(*python_code_queue_mutex);
   // we compile the received fragment
   std::stringstream ss;
   if (code_fragment > 0)
@@ -211,16 +210,20 @@ int ScriptEngine::execute_script(std::string script,int code_fragment){
   ss << code_fragment;
   boost::python::handle<> src;
   if (code_fragment == -1){//entire script 'flag'
+    boost::lock_guard<boost::mutex> lock(*python_scope_mutex);
     src=boost::python::handle<>(boost::python::allow_null(Py_CompileString(script.c_str(), ss.str().c_str(), Py_file_input)));
     if (NULL != src.get()){
-      boost::lock_guard<boost::mutex> lock(*python_scope_mutex);
       boost::python::handle<> dum(boost::python::allow_null(PyEval_EvalCode((PyCodeObject *)src.get(), global_scope.get(), local_scope.get())));
     }
   }else{//single input compilation
-    src=boost::python::handle<>(boost::python::allow_null(Py_CompileString(script.c_str(), ss.str().c_str(), Py_single_input)));
+    {
+      boost::lock_guard<boost::mutex> lock(*python_scope_mutex);
+      src=boost::python::handle<>(boost::python::allow_null(Py_CompileString(script.c_str(), ss.str().c_str(), Py_single_input)));
+    }
     if (NULL != src.get()){
-        python_code_queue.push(std::pair<boost::python::handle<>,int>(src,code_fragment));
-        python_code_queue_condition->notify_one();
+      boost::lock_guard<boost::mutex> lock(*python_code_queue_mutex);
+      python_code_queue.push(std::pair<boost::python::handle<>,int>(src,code_fragment));
+      python_code_queue_condition->notify_one();
     }
     if (code_fragment){//we don't check errors on internal request (fragment code = 0)
       PyObject *exc,*val,*trb,*obj;
@@ -444,7 +447,7 @@ void ScriptEngine::signal_execute_script(SignalArgs& node)
     boost::lock_guard<boost::mutex> lock(compile_mutex);
     new_fragment=execute_script(code,fragment);
   }
-  if (new_fragment > 0 && fragment != new_fragment){
+  if (new_fragment > 0){
     SignalFrame reply=node.create_reply();
     SignalOptions options(reply);
     options.add_option("fragment", fragment);
