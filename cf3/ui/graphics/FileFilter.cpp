@@ -67,10 +67,8 @@ bool FileFilter::lessThan(const QModelIndex &left, const QModelIndex &right) con
     }
     QVariant left_data=m_model->data(left,Qt::DisplayRole);
     QVariant right_data=m_model->data(right,Qt::DisplayRole);
-    if (left_data.type() == QMetaType::QString && left_data.type() == QMetaType::QString){
-      QString left_str(left_data.toString().data());
-      QString right_str(right_data.toString().data());
-      return right_str.toLower() >= left_str.toLower();
+    if (left_data.type() == QVariant::String && left_data.type() == QVariant::String){
+      return left_data.toString().toLower() >= right_data.toString().toLower();
     }
   }
   return true;
